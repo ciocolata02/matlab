@@ -4,7 +4,7 @@ loaded = m.Net
 %img = readimage(imds,100);
 %actualLabel = imds.Labels(100);
 
-testImage = imread ('tu.jpg')
+testImage = imread ('tulip.jpg')
 
 resizedIm = imresize(testImage, [224 224]);
 
