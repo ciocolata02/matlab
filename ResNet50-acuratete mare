@@ -1,0 +1,118 @@
+%% Incarcarea imagnilor de antrenare
+digitDatasetPath = fullfile('D:\Downloads\15k\15k');
+imds = imageDatastore(digitDatasetPath, ...
+    'IncludeSubfolders',true,'LabelSource','foldernames');
+
+%% Impartirea imaginilor in doua parti pentru antrenare si testare
+ [trainingImages, testImages] = splitEachLabel(imds, 0.8, 'randomize');
+%% Incarcarea retelei pre-antrenate
+ Net = resnet50();
+ 
+numClasses = numel(categories(trainingImages.Labels));
+lgraph = layerGraph(Net);
+newFCLayer = fullyConnectedLayer(numClasses,'Name','new_fc','WeightLearnRateFactor',10,'BiasLearnRateFactor',10);
+lgraph = replaceLayer(lgraph,'fc1000',newFCLayer);
+newClassLayer = classificationLayer('Name','new_classoutput');
+lgraph = replaceLayer(lgraph,'ClassificationLayer_fc1000',newClassLayer);
+
+inputSize = Net.Layers(1).InputSize;
+inputSize= [224 224];
+augimdsTrain = augmentedImageDatastore(inputSize,trainingImages);
+augimdsValidation = augmentedImageDatastore(inputSize,testImages);
+%% vizualizarea arhitecturii
+layers = Net.Layers 
+
+%% Setarea parametrilor de invatare
+opts = trainingOptions('sgdm', 'InitialLearnRate', 0.001,...
+ 'MaxEpochs', 20, 'MiniBatchSize', 32,...
+ 'LearnRateDropFactor', 0.01, ...
+ 'LearnRateDropPeriod', 10, ...
+ 'ValidationData',augimdsValidation, ...
+ 'Plot','training-progress');
+ 
+%% Antrenarea retelei
+trainedNet = trainNetwork(augimdsTrain, lgraph, opts);
+
+
+Dupa ce e gata antrenarea, dau save.
+Dupa urmeaza codul ca sa imi afiseze 4 predictii + matricea de confuzie:
+
+load ('resnet50batch32')
+testImages.ReadFcn = @readFunctionTrain;
+trainingImages.ReadFcn = @readFunctionTrain;
+validationImages.ReadFcn=@readFunctionTrain;
+[YPred,probs] = classify(trainedNet,testImages,'MiniBatchSize',1);
+accuracy = mean(YPred == testImages.Labels);
+idx = randperm(numel(testImages.Files),4);
+figure
+for i = 1:4
+ subplot(2,2,i)
+ I = readimage(testImages,idx(i));
+ imshow(I)
+ label = YPred(idx(i));
+ title(string(label) + ", " + num2str(100*max(probs(idx(i),:)),3) + "%");
+end
+%% plot la matricea de confuzie
+%plotconfusion(testImages.Labels,YPred)
+yvalues = {'Acianthera Luteola'
+'African Daisy'
+'Anthurium'
+'Buddleja'
+'Cherry Blossom'
+'Colorado four oclock'
+'Common Dandelion'
+'Daisy'
+'Dames Rocket'
+'Daphnes'
+'Dayflowers'
+'Duranta'
+'Euonymus Fortunei'
+'Evergreen Rose'
+'Field Marigold'
+'Floribunda'
+'Hawaiian hibiscus'
+'Hollyhocks'
+'Hyacinth'
+'Hypericum'
+'Lilies'
+'Lily'
+'Lily of the Nile'
+'Lobelia'
+'Lobster-Claws'
+'Lupine'
+'Mexican Marigold'
+'Not a flower'
+'Nyctaginaceae'
+'Oleander'
+'Oxeye Daisy'
+'Phlox'
+'Poinsettia'
+'Primrose'
+'Purple Coneflower'
+'Redwood Sorrel'
+'Rosa Centifolia Muscosa'
+'Rose'
+'Sacred Lotus'
+'Sasanqua Camellia'
+'Shepherdia'
+'Sunflower'
+'Sweet Grass'
+'Tricyrtis'
+'Tulip'
+'Violet'
+'Waling-Waling'
+'Water Lilies'
+'Wild Peony'
+'Woodland Sunflower'}
+
+confMat = confusionmat(testImages.Labels,YPred)%we use this to evaluate the performance of the classifier
+
+confMat = bsxfun(@rdivide, confMat, sum(confMat,2))%we want to divide the confusion matrix by a sinble column matrix
+sum(confMat,2) %- calculatez the sum of the entire row of confMat and put
+
+heatmap(yvalues, yvalues, confMat, 'FontSize', 8, 'CellLabelFormat','%.2f')
+
+
+
+
+
